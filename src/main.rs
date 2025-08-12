@@ -2,6 +2,7 @@ use std::{env, fs};
 
 mod count;
 mod draw;
+mod verify;
 
 fn main() {
     let string_parts: Vec<String> = env::args().skip(1).collect();
