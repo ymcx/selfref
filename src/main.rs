@@ -1,24 +1,57 @@
-use std::{env, fs};
+mod calculate;
+mod generate;
+mod misc;
 
-mod count;
-mod draw;
-mod verify;
+use clap::{Parser, Subcommand, arg, command};
+
+#[derive(Parser)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Generate {
+        #[arg(short, long, num_args = 3..=4, default_values_t = [0, 0, 0, 0])]
+        bg_color: Vec<u8>,
+        #[arg(short, long, num_args = 3..=4, default_values_t = [0, 0, 0, 255])]
+        fg_color: Vec<u8>,
+        #[arg(long)]
+        font: String,
+        #[arg(long, num_args = 1..=2, default_values_t = [20, 30])]
+        font_size: Vec<usize>,
+        #[arg(default_value = "This image contains %s opaque pixels.")]
+        text: String,
+    },
+    Verify {
+        #[arg(short, long, num_args = 3..=4, default_values_t = [0, 0, 0, 255])]
+        fg_color: Vec<u8>,
+        file: String,
+    },
+}
 
 fn main() {
-    let string_parts: Vec<String> = env::args().skip(1).collect();
-    let string = string_parts.join("");
-    let px_range = (20, 24);
-    let image_dimensions = ((string.len() as f32 * 0.75) as u32, 2);
-
-    let pixels = count::sizes_in_set(&string, px_range);
-    let pixels_range = count::get_pixels_range(string.len(), &pixels);
-    let results = count::brute_force(&string, px_range, pixels_range, &pixels);
-
-    fs::remove_dir_all("images").unwrap_or_default();
-    fs::create_dir("images").unwrap();
-    for (iteration, (pixels, px)) in results.iter().enumerate() {
-        let file = format!("images/{}.png", iteration);
-        let string_final = string_parts.join(&pixels.to_string());
-        draw::render(&string_final, *px as u32, &file, image_dimensions);
+    match Cli::parse().command {
+        Commands::Generate {
+            bg_color,
+            fg_color,
+            font,
+            font_size,
+            text,
+        } => {
+            let result = generate::generate_image(&text, &font, &font_size, &fg_color, &bg_color);
+            match result {
+                Err(e) => eprintln!("{}", e),
+                Ok(_) => {}
+            }
+        }
+        Commands::Verify { fg_color, file } => {
+            let pixels = calculate::pixels_in_image(&file, &fg_color);
+            match pixels {
+                Err(e) => eprintln!("{}", e),
+                Ok(v) => println!("{}", v),
+            }
+        }
     }
 }
